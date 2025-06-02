@@ -309,6 +309,7 @@ class SteamCmdManager {
     async downloadMods(mods) {
         try {
             const results = [];
+            const coreModNames = ['Core', 'RimWorld', 'RimWorldCore', 'GameCore'];
 
             // Обрабатываем каждый мод
             for (const mod of mods) {
@@ -331,13 +332,15 @@ class SteamCmdManager {
                         console.log(`Найден ID мода "${mod.name}": ${modId}`);
                     }
 
-                    // Пропускаем Core мод
-                    if (mod.name === 'Core') {
-                        console.log('Пропускаем Core мод - это встроенный мод RimWorld');
+                    // Пропускаем Core мод и связанные с ним
+                    if (coreModNames.some(name => mod.name?.toLowerCase() === name.toLowerCase())) {
+                        console.log(`Пропускаем ${mod.name} - это ядро игры RimWorld`);
                         results.push({
                             id: modId,
                             name: mod.name,
-                            success: true
+                            success: true,
+                            skipped: true,
+                            reason: 'Ядро игры'
                         });
                         continue;
                     }
