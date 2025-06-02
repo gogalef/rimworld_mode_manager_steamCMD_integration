@@ -1,0 +1,14 @@
+{
+  "name": "rimworld-mod-installer",
+  "version": "1.0.0",
+  "description": "Инструмент для установки модов RimWorld из файла сохранения",
+  "main": "main.js",
+  "scripts": {
+    "start": "node main.js"
+  },
+  "dependencies": {
+    "child_process": "^1.0.2",
+    "fs": "^0.0.1-security",
+    "path": "^0.12.7"
+  }
+} 
