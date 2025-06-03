@@ -1,71 +1,74 @@
 const fs = require('fs');
 const path = require('path');
+const config = require('./config');
 
 class RimworldSaveReader {
-    constructor(saveFilePath) {
-        this.saveFilePath = saveFilePath;
+    constructor() {
+        this.saveFilePath = config.saveFilePath;
         // ID официальных дополнений RimWorld
         this.officialDlcIds = [
-            '1149640', // Royalty
-            '1392840', // Ideology
-            '1826140', // Biotech
-            '2380740'  // Anomaly
+            '1130216446', // Royalty
+            '2106325227', // Ideology
+            '2895290905', // Biotech
+            '294100'      // Anomaly
         ];
+        // Названия ядра игры и DLC
+        this.coreModNames = ['Core', 'RimWorld', 'RimWorldCore', 'GameCore', 'Royalty', 'Ideology', 'Biotech', 'Anomaly'];
     }
 
     /**
-     * Проверяет, является ли мод официальным дополнением
-     * @param {string} id - ID мода
+     * Проверяет, является ли мод официальным дополнением или ядром игры
+     * @param {string} steamId - Steam ID мода
+     * @param {string} modName - Название мода
      * @returns {boolean}
      */
-    isOfficialDlc(id) {
-        return this.officialDlcIds.includes(id);
+    isOfficialMod(steamId, modName) {
+        return this.officialDlcIds.includes(steamId) || 
+               this.coreModNames.some(name => modName?.toLowerCase() === name.toLowerCase());
     }
 
     /**
      * Читает файл сохранения и извлекает список модов
-     * @returns {Promise<Array<{id: string, name?: string}>>} Список модов с ID и названиями
+     * @returns {Promise<Array<[string, string, string]>>} Массив модов в формате [modId, steamId, modName]
      */
     async extractModList() {
         try {
-            const saveData = await fs.promises.readFile(this.saveFilePath);
-            const saveContent = saveData.toString('utf-8');
-            
+            const saveContent = await fs.promises.readFile(this.saveFilePath, 'utf8');
             const mods = [];
 
-            // Ищем список ID модов из Steam
-            const steamIdsMatch = saveContent.match(/<modSteamIds>(.*?)<\/modSteamIds>/s);
-            if (steamIdsMatch) {
-                const steamIdsSection = steamIdsMatch[1];
-                const steamIdMatches = steamIdsSection.match(/<li>(\d+)<\/li>/g);
-                if (steamIdMatches) {
-                    steamIdMatches.forEach(match => {
-                        const id = match.match(/<li>(\d+)<\/li>/)[1];
-                        // Пропускаем официальные дополнения
-                        if (!this.isOfficialDlc(id)) {
-                            mods.push({ id });
-                        }
-                    });
-                }
-            }
+            // Ищем секцию с ID модов
+            const modIdsMatch = saveContent.match(/<modIds>(.*?)<\/modIds>/s);
+            if (modIdsMatch) {
+                const modIdsContent = modIdsMatch[1];
+                const modIds = modIdsContent.match(/<li>([^<]+)<\/li>/g)?.map(id => id.replace(/<\/?li>/g, '')) || [];
+                
+                // Ищем секцию с Steam ID модов
+                const modSteamIdsMatch = saveContent.match(/<modSteamIds>(.*?)<\/modSteamIds>/s);
+                const modSteamIds = modSteamIdsMatch ? 
+                    modSteamIdsMatch[1].match(/<li>(\d+)<\/li>/g)?.map(id => id.replace(/<\/?li>/g, '')) || [] : 
+                    [];
 
-            // Ищем список названий модов
-            const modNamesMatch = saveContent.match(/<modNames>(.*?)<\/modNames>/s);
-            if (modNamesMatch) {
-                const modNamesSection = modNamesMatch[1];
-                const modNameMatches = modNamesSection.match(/<li>([^<]+)<\/li>/g);
-                if (modNameMatches) {
-                    modNameMatches.forEach(match => {
-                        const name = match.match(/<li>([^<]+)<\/li>/)[1];
-                        // Пропускаем официальные дополнения по названию
-                        if (!['Royalty', 'Ideology', 'Biotech', 'Anomaly'].includes(name)) {
-                            // Проверяем, нет ли уже мода с таким названием
-                            const existingMod = mods.find(m => m.name === name);
-                            if (!existingMod) {
-                                mods.push({ id: '0', name });
-                            }
-                        }
-                    });
+                // Ищем секцию с названиями модов
+                const modNamesMatch = saveContent.match(/<modNames>(.*?)<\/modNames>/s);
+                const modNames = modNamesMatch ? 
+                    modNamesMatch[1].match(/<li>([^<]+)<\/li>/g)?.map(name => name.replace(/<\/?li>/g, '')) || [] : 
+                    [];
+                // Собираем все моды в единый массив
+                for (let i = 0; i < modIds.length; i++) {
+                    const modId = modIds[i];
+                    const steamId = modSteamIds[i] || '0';
+                    const modName = modNames[i] || modId;
+
+                    // Пропускаем официальные DLC и ядро игры
+                    if (this.isOfficialMod(steamId, modName)) {
+                        console.log(`Пропускаем ${modName} (${steamId}) - это официальный DLC или ядро игры`);
+                        continue;
+                    }
+                    mods.push([modId, steamId, modName]);
+                    // Пропускаем дубликаты
+                   // if (!mods.some(m => m[0] === modId || m[1] === steamId)) {
+                    //    mods.push([modId, steamId, modName]);
+                    //}
                 }
             }
 

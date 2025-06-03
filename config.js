@@ -4,7 +4,7 @@ const os = require('os');
 module.exports = {
     // Путь к файлу сохранения RimWorld
     //saveFilePath: path.join(os.homedir(), 'AppData', 'LocalLow', 'Ludeon Studios', 'RimWorld by Ludeon Studios', 'Saves', 'quicksave.rws'),
-    saveFile: path.join(__dirname, 'старт.rws'),
+    saveFilePath: path.join(__dirname, 'старт.rws'),
 
     // Путь к SteamCMD
     steamCmdPath: 'C:\\Games\\steamCMD\\steamcmd.exe',
